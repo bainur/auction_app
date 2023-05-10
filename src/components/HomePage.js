@@ -13,10 +13,11 @@ const HomePage = (props) => {
   const [totalItems, setTotalItems] = useState(0);
   const [pageNumbers, setPageNumbers] = useState([]);
   const [sortOrder, setSortOrder] = useState("asc");
+  const [currentItemsWithTimeLeft, setCurrentItemsWithTimeLeft] = useState([]);
 
   const getData = () => {
     const headers = {
-      Authorization: props.authToken,
+      Authorization: authToken,
       'Content-Type': 'application/json',
       Accept: 'application/json'
     }
@@ -84,6 +85,29 @@ const HomePage = (props) => {
     );
   });
 
+  const handleBidNow = (itemId) => {
+    const config = {
+      headers: {
+        Authorization: authToken,
+        'Content-Type': 'application/json'
+      }
+    }
+    const body = {
+      item_id: itemId
+    }
+    axios.post('http://192.168.0.11:3000/auctions', body, config)
+      .then(response => {
+        alert(response.data.message);
+      })
+      .catch(error => {
+        alert(error.response.data.message);
+      });
+  }
+
+  const isButtonDisabled = (days, hours, minutes, seconds) => {
+    return days === 0 && hours === 0 && minutes === 0 && seconds === 0
+  }
+
   useEffect(() => {
     getData()
   }, []);
@@ -91,6 +115,37 @@ const HomePage = (props) => {
   useEffect(() => {
     getData()
   }, [currentPage, wordEntered, sortOrder]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const newTimeLeft = currentItems.map(item => {
+        const diff = new Date(item.end_time).getTime() - new Date().getTime();
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const minutes = Math.floor((diff / (1000 * 60)) % 60);
+        const seconds = Math.floor((diff / 1000) % 60);
+        let timeLeft = null
+        if(days < 1 && hours < 1 && minutes < 1 && seconds < 1)
+          timeLeft = {
+            days: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0
+          }
+        else
+          timeLeft = {
+            days: days,
+            hours: hours,
+            minutes: minutes,
+            seconds: seconds
+          }
+        return { ...item, timeLeft: timeLeft };
+      });
+      setCurrentItemsWithTimeLeft(newTimeLeft);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [currentItems]);
 
   if (authToken === "") {
     return <Navigate to="/login" />;
@@ -128,8 +183,8 @@ const HomePage = (props) => {
           />
         </div>
       </div>
-      <div className="flex-grow max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+      <div className="flex-grow mx-auto py-6">
+        <div className="sm:px-0">
           <table className="w-full border-collapse">
             <thead>
               <tr>
@@ -147,26 +202,29 @@ const HomePage = (props) => {
                     <span>&#x25BC;</span>
                   )}
                 </th>
-                <th className="border border-gray-500 px-4 py-2">Start Time</th>
-                <th className="border border-gray-500 px-4 py-2">End Time</th>
+                <th className="border border-gray-500 px-4 py-2">Bid Price</th>
+                <th className="border border-gray-500 px-4 py-2">Countdown</th>
                 <th className="border border-gray-500 px-4 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {currentItems.map((item) => (
+              {currentItemsWithTimeLeft.map((item) => (
                 <tr key={item.id}>
                   <td className="border border-gray-500 px-4 py-2">{item.title}</td>
                   <td className="border border-gray-500 px-4 py-2">{item.description}</td>
                   <td className="border border-gray-500 px-4 py-2">${item.price}</td>
-                  <td className="border border-gray-500 px-4 py-2">{item.start_time}</td>
-                  <td className="border border-gray-500 px-4 py-2">{item.end_time}</td>
+                  <td className="border border-gray-500 px-4 py-2">${item.bid}</td>
+                  <td className="border border-gray-500 px-4 py-2">{item.timeLeft?.days} days, {item.timeLeft?.hours} hours, {item.timeLeft?.minutes} minutes, {item.timeLeft?.seconds} seconds</td>
                   <td className="border border-gray-500 px-4 py-2">
-                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2">
-                      Edit
+                    <button
+                      onClick={() => handleBidNow(item.id)}
+                      className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2 ${isButtonDisabled(item.timeLeft?.days, item.timeLeft?.hours, item.timeLeft?.minutes, item.timeLeft?.seconds) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={isButtonDisabled(item.timeLeft?.days, item.timeLeft?.hours, item.timeLeft?.minutes, item.timeLeft?.seconds)}>
+                      Bid Now
                     </button>
-                    <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                    {/* <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
                       Delete
-                    </button>
+                    </button> */}
                   </td>
                 </tr>
               ))}

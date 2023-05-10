@@ -8,7 +8,7 @@ import LoginPage from './components/LoginPage';
 function App() {
   const authToken = useSelector(state => state.authToken)
   return (
-    <Router>
+    <Router basename="/auction_app">
       <Routes>
         <Route path='/' element={<HomePage />} />
         {authToken === '' && <Route path='/login' element={<LoginPage />} />}

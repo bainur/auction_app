@@ -6,12 +6,12 @@ import HomePage from './components/HomePage';
 import LoginPage from './components/LoginPage';
 
 function App() {
-  const isLoggedIn = useSelector(state => state.isLoggedIn)
+  const authToken = useSelector(state => state.authToken)
   return (
     <Router>
       <Routes>
         <Route path='/' element={<HomePage />} />
-        {!isLoggedIn && <Route path='/login' element={<LoginPage />} />}
+        {authToken === '' && <Route path='/login' element={<LoginPage />} />}
       </Routes>
     </Router>
   );

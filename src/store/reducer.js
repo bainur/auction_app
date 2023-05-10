@@ -4,7 +4,7 @@ import {
 } from "../actions/authActions";
 
 const initialState = {
-  isLoggedIn: false
+  authToken: ""
 }
 
 const reducer = (state = initialState, action) => {
@@ -13,13 +13,13 @@ const reducer = (state = initialState, action) => {
       console.log('LOGIN')
       return {
         ...state,
-        isLoggedIn: true
+        authToken: action.authToken
       }
     case LOGOUT:
       console.log('LOGOUT')
       return {
         ...state,
-        isLoggedIn: false
+        authToken: ""
       }
     default:
       return state

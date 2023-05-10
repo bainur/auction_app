@@ -5,7 +5,7 @@ import { logout } from "../actions/authActions";
 
 const Header = (props) => {
   const dispatch = useDispatch();
-  const isLoggedIn = props.isLoggedIn
+  const authToken = props.authToken
   const history = useNavigate()
 
   const handleLogoutClick = (event) => {
@@ -24,7 +24,7 @@ const Header = (props) => {
           <Link to="/" className="px-2 text-white hover:text-gray-300">
             Home
           </Link>
-          {isLoggedIn && <button onClick={handleLogoutClick} className="px-2 text-white hover:text-gray-300">Logout</button>}
+          {authToken !== "" && <button onClick={handleLogoutClick} className="px-2 text-white hover:text-gray-300">Logout</button>}
         </div>
       </nav>
     </header>
@@ -33,7 +33,7 @@ const Header = (props) => {
 
 const mapStateToProps = (state) => {
   return {
-    isLoggedIn: state.isLoggedIn,
+    authToken: state.authToken,
   };
 };
 

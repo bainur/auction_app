@@ -3,6 +3,7 @@ import Header from './Header';
 import { useNavigate } from "react-router-dom";
 import { connect } from "react-redux";
 import { login } from "../actions/authActions";
+import axios from 'axios';
 
 const LoginPage = (props) => {
   const [username, setUsername] = useState('');
@@ -19,11 +20,16 @@ const LoginPage = (props) => {
 
   const handleFormSubmit = (event) => {
     event.preventDefault();
-    if((username === "user1" || username === "user2") && password === "12345678") {
-      props.login()
-      history('/');
-    } else
-      alert("Incorrect username or password")
+    axios.post('http://192.168.0.11:3000/login', { username, password })
+    .then(response => {
+      if(response.status === 200) {
+        props.login(response.data.auth)
+        history('/');
+      }
+    })
+    .catch(error => {
+      alert(error.message);
+    });
   };
 
   return (
@@ -76,7 +82,7 @@ const LoginPage = (props) => {
 
 const mapDispatchToProps = (dispatch) => {
   return {
-    login: () => dispatch(login()),
+    login: (authToken) => dispatch(login(authToken)),
   }
 };
 

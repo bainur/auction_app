@@ -1,61 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { connect } from "react-redux";
 import { Navigate } from "react-router-dom";
 import Header from './Header';
-
-const dummyData = [
-  { id: 1, name: 'Uang Kuno', description: 'Uang kuno selalu menjadi barang antik yang bernilai jual tinggi dari tahun ke tahun', price: 1 },
-  { id: 2, name: 'Dakon', description: 'Dakon merupakan permainan untuk anak-anak perempuan di masa lampau', price: 2 },
-  { id: 3, name: 'Guci Antik', description: 'Barang yang satu ini kerap diidentikkan dengan barang antik yang bernilai jual tinggi.', price: 3 },
-  { id: 4, name: 'Pemutar Piringan Hitam', description: 'Pemutar piringan hitam bisa dibilang sebagai benda yang mewah di masa lampau.', price: 4 },
-  { id: 5, name: 'Replika Kendaraan', description: 'Salah satu barang antik yang juga kerap diminati kolektor adalah replika atau miniatur kendaraan.', price: 5 },
-  { id: 6, name: 'Perabot Antik', description: 'Tak hanya dapat dikoleksi, perabot antik juga bisa digunakan pada hunianmu.', price: 6 },
-  { id: 7, name: 'Cangkir Antik', description: 'Banyak orang yang kerap menggunakan cangkir atau cawan antik sebagai dekorasi untuk hunian,', price: 7 },
-  { id: 8, name: 'Jam Dinding Kuno', description: 'Jam dinding kuno ini biasanya memiliki ukuran yang cukup besar dan diletakkan di area yang bisa dilihat banyak orang.', price: 8 },
-  { id: 9, name: 'Barang Elektronik Tempo Dulu', description: 'Kini, banyak orang yang kembali tertarik dengan barang elektronik tempo dulu. Salah satunya adalah kembali populernya kamera analog hingga radio', price: 9 },
-  { id: 10, name: 'Porselen Antik', description: 'Porselen kuno juga identik dengan barang antik yang mempunyai nilai jual yang fantastis.', price: 10 },
-  { id: 11, name: 'Buku Antik', description: 'Buku yang ditulis dengan tangan itu memiliki nilai jual yang sangat tinggi', price: 11 },
-  { id: 12, name: 'Lukisan Antik', description: 'Lukisan menjadi salah satu karya seni yang mempunyai nilai jual yang tinggi, terlebih lagi jika mempunyai nilai historis.', price: 12 },
-  { id: 13, name: 'Perangko', description: 'Siapa yang sangka kalau perangko masuk ke dalam jajaran barang antik yang memiliki nilai jual tinggi.', price: 13 },
-];
+import axios from 'axios';
 
 const HomePage = (props) => {
-  const isLoggedIn = props.isLoggedIn
+  const authToken = props.authToken
+  const [currentItems, setCurrentItems] = useState([]);
+  const [wordEntered, setWordEntered] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
-  const [totalItems] = useState(dummyData.length);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = dummyData.slice(indexOfFirstItem, indexOfLastItem);
-  const pageNumbers = [];
-  const [sortBy, setSortBy] = useState(null);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [pageNumbers, setPageNumbers] = useState([]);
   const [sortOrder, setSortOrder] = useState("asc");
-  
-  for (let i = 1; i <= Math.ceil(totalItems / itemsPerPage); i++) {
-    pageNumbers.push(i);
+
+  const getData = () => {
+    const headers = {
+      Authorization: props.authToken,
+      'Content-Type': 'application/json',
+      Accept: 'application/json'
+    }
+    const params = {
+      query: wordEntered,
+      page: currentPage,
+      sort_price: sortOrder
+    }
+    axios.get('http://192.168.0.11:3000/items', { headers, params })
+      .then(response => {
+        console.log(response.data)
+        setCurrentItems(response.data.data);
+        setCurrentPage(response.data.metadata.page)
+        setItemsPerPage(response.data.metadata.per_page)
+        setTotalItems(response.data.metadata.items_count)
+        const pageNumbers = []
+        for (let i = 1; i <= Math.ceil(response.data.metadata.items_count / response.data.metadata.per_page); i++) {
+          pageNumbers.push(i);
+        }
+        setPageNumbers(pageNumbers)
+      })
+      .catch(error => {
+        console.log(error);
+      });
   }
 
-  const handleSort = (sortKey) => {
-    if (sortKey === sortBy) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setSortBy(sortKey);
-      setSortOrder("asc");
-    }
+  const handleSort = () => {
+    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
   };
 
-  const sortedData = currentItems.sort((a, b) => {
-    const sortMultiplier = sortOrder === "asc" ? 1 : -1;
-    if (sortBy === "name") {
-      return sortMultiplier * a.name.localeCompare(b.name);
-    } else if (sortBy === "price") {
-      return sortMultiplier * (a.price - b.price);
-    }
-    return 0;
-  });
-
-  const handleClick = (event) => {
-    setCurrentPage(Number(event.target.id));
+  const handleFilter = (event) => {
+    const searchWord = event.target.value;
+    setWordEntered(searchWord)
+    setCurrentPage(1)
   };
 
   const handlePrevClick = () => {
@@ -68,6 +63,10 @@ const HomePage = (props) => {
     if (currentPage < Math.ceil(totalItems / itemsPerPage)) {
       setCurrentPage(currentPage + 1);
     }
+  };
+
+  const handleClick = (event) => {
+    setCurrentPage(Number(event.target.id));
   };
 
   const renderPageNumbers = pageNumbers.map((number) => {
@@ -85,73 +84,115 @@ const HomePage = (props) => {
     );
   });
 
-  if (!isLoggedIn) {
+  useEffect(() => {
+    getData()
+  }, []);
+
+  useEffect(() => {
+    getData()
+  }, [currentPage, wordEntered, sortOrder]);
+
+  if (authToken === "") {
     return <Navigate to="/login" />;
   }
 
   return (
     <div className="bg-gray-100 min-h-screen flex flex-col">
-        <Header />
+      <Header />
       <div className="flex items-center justify-between max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         <h1 className="text-4xl font-bold">Items</h1>
-        <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-          New
-        </button>
+      </div>
+      <div className="mx-auto max-w-lg">
+        <div className="relative text-gray-600 focus-within:text-gray-400">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-2">
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M9.827 12.093a6.5 6.5 0 111.414-1.414l3.536 3.536a1 1 0 11-1.414 1.414l-3.536-3.536zm-5.5-1.5a4.5 4.5 0 109 0 4.5 4.5 0 00-9 0z"
+              />
+            </svg>
+          </span>
+          <input
+            type="search"
+            name="search"
+            id="search"
+            value={wordEntered}
+            onChange={handleFilter}
+            placeholder={'Search'}
+            className="py-2 pl-8 pr-5 w-full bg-white rounded-md focus:outline-none focus:bg-white focus:shadow-outline-blue sm:text-sm sm:leading-5"
+          />
+        </div>
       </div>
       <div className="flex-grow max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th className="border border-gray-500 px-4 py-2">No.</th>
-                <th className="border border-gray-500 px-4 py-2">Name</th>
+                <th className="border border-gray-500 px-4 py-2">Title</th>
                 <th className="border border-gray-500 px-4 py-2">Description</th>
                 <th 
                   className="border border-gray-500 px-4 py-2 cursor-pointer"
-                  onClick={() => handleSort("price")}
+                  onClick={() => handleSort()}
                 >
                   Price
-                  {sortBy === "price" && sortOrder === "asc" && (
+                  {sortOrder === "asc" && (
                     <span>&#x25B2;</span>
                   )}
-                  {sortBy === "price" && sortOrder === "desc" && (
+                  {sortOrder === "desc" && (
                     <span>&#x25BC;</span>
                   )}
                 </th>
+                <th className="border border-gray-500 px-4 py-2">Start Time</th>
+                <th className="border border-gray-500 px-4 py-2">End Time</th>
+                <th className="border border-gray-500 px-4 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {sortedData.map((item) => (
+              {currentItems.map((item) => (
                 <tr key={item.id}>
-                  <td className="border border-gray-500 px-4 py-2">{item.id}</td>
-                  <td className="border border-gray-500 px-4 py-2">{item.name}</td>
+                  <td className="border border-gray-500 px-4 py-2">{item.title}</td>
                   <td className="border border-gray-500 px-4 py-2">{item.description}</td>
                   <td className="border border-gray-500 px-4 py-2">${item.price}</td>
+                  <td className="border border-gray-500 px-4 py-2">{item.start_time}</td>
+                  <td className="border border-gray-500 px-4 py-2">{item.end_time}</td>
+                  <td className="border border-gray-500 px-4 py-2">
+                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2">
+                      Edit
+                    </button>
+                    <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
           <ul className="flex justify-center mt-4">
-        <li
-          onClick={handlePrevClick}
-          className={`${
-            currentPage === 1 ? "opacity-50 cursor-not-allowed" : ""
-          } border border-gray-300 px-3 py-1 cursor-pointer`}
-        >
-          Prev
-        </li>
-        {renderPageNumbers}
-        <li
-          onClick={handleNextClick}
-          className={`${
-            currentPage === Math.ceil(totalItems / itemsPerPage)
-              ? "opacity-50 cursor-not-allowed"
-              : ""
-          } border border-gray-300 px-3 py-1 cursor-pointer`}
-        >
-          Next
-        </li>
-      </ul>
+            <li
+              onClick={handlePrevClick}
+              className={`${
+                currentPage === 1 ? "opacity-50 cursor-not-allowed" : ""
+              } border border-gray-300 px-3 py-1 cursor-pointer`}
+            >
+              Prev
+            </li>
+            {renderPageNumbers}
+            <li
+              onClick={handleNextClick}
+              className={`${
+                currentPage === Math.ceil(totalItems / itemsPerPage)
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
+              } border border-gray-300 px-3 py-1 cursor-pointer`}
+            >
+              Next
+            </li>
+          </ul>
         </div>
       </div>
     </div>
@@ -160,7 +201,7 @@ const HomePage = (props) => {
 
 const mapStateToProps = (state) => {
   return {
-    isLoggedIn: state.isLoggedIn,
+    authToken: state.authToken,
   };
 };
 

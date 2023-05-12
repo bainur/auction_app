@@ -1,0 +1,5 @@
+.ReactModal__Content {
+  inset: 35% !important;
+  background-color: white;
+  padding: 20px;
+}

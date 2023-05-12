@@ -4,10 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { connect } from "react-redux";
 import { login } from "../actions/authActions";
 import axios from 'axios';
+import LoadingIndicator from './LoadingIndicator';
 
 const LoginPage = (props) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const history = useNavigate()
 
   const handleUsernameChange = (event) => {
@@ -20,20 +22,24 @@ const LoginPage = (props) => {
 
   const handleFormSubmit = (event) => {
     event.preventDefault();
-    axios.post('http://192.168.0.11:3000/login', { username, password })
+    setLoading(true);
+    axios.post('http://localhost:3000/login', { username, password })
     .then(response => {
       if(response.status === 200) {
+        setLoading(false);
         props.login(response.data.auth)
         history('/');
       }
     })
     .catch(error => {
+      setLoading(false);
       alert(error.message);
     });
   };
 
   return (
     <div className="bg-gray-100 min-h-screen flex flex-col">
+      {loading && <LoadingIndicator />}
       <Header />
       <div className="flex-grow max-w-md w-full mx-auto p-8">
         <h2 className="text-center text-2xl font-bold mb-4">Login</h2>

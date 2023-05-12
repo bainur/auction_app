@@ -3,6 +3,8 @@ import { connect } from "react-redux";
 import { Navigate } from "react-router-dom";
 import Header from './Header';
 import axios from 'axios';
+import LoadingIndicator from './LoadingIndicator';
+import ConfirmationModal from './ConfirmationModal';
 
 const HomePage = (props) => {
   const authToken = props.authToken
@@ -14,6 +16,44 @@ const HomePage = (props) => {
   const [pageNumbers, setPageNumbers] = useState([]);
   const [sortOrder, setSortOrder] = useState("asc");
   const [currentItemsWithTimeLeft, setCurrentItemsWithTimeLeft] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
+  const [selectedCell, setSelectedCell] = useState(null);
+
+  function handleAutoBidClick(item) {
+    setSelectedCell(item);
+    setIsConfirmationModalOpen(true);
+  }
+
+  function handleConfirm() {
+    // Perform action after confirmation
+    setIsConfirmationModalOpen(false);
+    const config = {
+      headers: {
+        Authorization: authToken,
+        'Content-Type': 'application/json'
+      }
+    }
+    const body = {
+      item_id: selectedCell.id,
+      alert: 50
+    }
+    setLoading(true)
+    axios.post('http://localhost:3000/autobids', body, config)
+      .then(response => {
+        setLoading(false)
+        alert(response.data.message);
+      })
+      .catch(error => {
+        setLoading(false)
+        alert(error.response.data.message);
+      });
+  }
+
+  function handleClose() {
+    setSelectedCell(null);
+    setIsConfirmationModalOpen(false);
+  }
 
   const getData = () => {
     const headers = {
@@ -26,9 +66,9 @@ const HomePage = (props) => {
       page: currentPage,
       sort_price: sortOrder
     }
-    axios.get('http://192.168.0.11:3000/items', { headers, params })
+    setLoading(true)
+    axios.get('http://localhost:3000/items', { headers, params })
       .then(response => {
-        console.log(response.data)
         setCurrentItems(response.data.data);
         setCurrentPage(response.data.metadata.page)
         setItemsPerPage(response.data.metadata.per_page)
@@ -40,6 +80,7 @@ const HomePage = (props) => {
         setPageNumbers(pageNumbers)
       })
       .catch(error => {
+        setLoading(false)
         console.log(error);
       });
   }
@@ -95,11 +136,14 @@ const HomePage = (props) => {
     const body = {
       item_id: itemId
     }
-    axios.post('http://192.168.0.11:3000/auctions', body, config)
+    setLoading(true)
+    axios.post('http://localhost:3000/auctions', body, config)
       .then(response => {
+        setLoading(false)
         alert(response.data.message);
       })
       .catch(error => {
+        setLoading(false)
         alert(error.response.data.message);
       });
   }
@@ -147,12 +191,17 @@ const HomePage = (props) => {
     return () => clearInterval(timer);
   }, [currentItems]);
 
+  useEffect(() => {
+    setLoading(false)
+  }, [currentItemsWithTimeLeft]);
+
   if (authToken === "") {
     return <Navigate to="/login" />;
   }
 
   return (
     <div className="bg-gray-100 min-h-screen flex flex-col">
+      {loading && <LoadingIndicator />}
       <Header />
       <div className="flex items-center justify-between max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         <h1 className="text-4xl font-bold">Items</h1>
@@ -222,20 +271,30 @@ const HomePage = (props) => {
                       disabled={isButtonDisabled(item.timeLeft?.days, item.timeLeft?.hours, item.timeLeft?.minutes, item.timeLeft?.seconds)}>
                       Bid Now
                     </button>
-                    {/* <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
-                      Delete
-                    </button> */}
+                    <button
+                      onClick={() => handleAutoBidClick(item)}
+                      className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2`}>
+                        Auto Bid
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {selectedCell && (
+            <ConfirmationModal
+              message={`Are you sure you want to auto bid "${selectedCell.title}"?`}
+              isOpen={isConfirmationModalOpen}
+              onRequestClose={handleClose}
+              onConfirm={handleConfirm}
+            />
+          )}
           <ul className="flex justify-center mt-4">
             <li
               onClick={handlePrevClick}
               className={`${
-                currentPage === 1 ? "opacity-50 cursor-not-allowed" : ""
-              } border border-gray-300 px-3 py-1 cursor-pointer`}
+                currentPage === 1 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+              } border border-gray-300 px-3 py-1`}
             >
               Prev
             </li>
@@ -245,8 +304,8 @@ const HomePage = (props) => {
               className={`${
                 currentPage === Math.ceil(totalItems / itemsPerPage)
                   ? "opacity-50 cursor-not-allowed"
-                  : ""
-              } border border-gray-300 px-3 py-1 cursor-pointer`}
+                  : "cursor-pointer"
+              } border border-gray-300 px-3 py-1`}
             >
               Next
             </li>
